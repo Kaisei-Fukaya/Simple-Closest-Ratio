@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Canvas Ratio Finder</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400;500&display=swap');
+
+  :root {
+    --ink: #1a1612;
+    --paper: #f5f0e8;
+    --paper-mid: #ece5d5;
+    --paper-dark: #d9cfbc;
+    --accent: #c0392b;
+    --gold: #b5922a;
+    --match: #2a6b3c;
+    --match-bg: #d4edda;
+    --match-light: rgba(42,107,60,0.07);
+    --perfect: #1a4d8f;
+    --perfect-bg: #ddeaf9;
+    --perfect-light: rgba(26,77,143,0.07);
+    --near: #7a5c00;
+    --near-bg: #fff3cd;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    background-image: repeating-linear-gradient(
+      0deg, transparent, transparent 27px,
+      rgba(0,0,0,0.04) 27px, rgba(0,0,0,0.04) 28px
+    );
+  }
+
+  /* ── Header ── */
+
+  header {
+    text-align: center;
+    padding: 3rem 2rem 2rem;
+    border-bottom: 2px solid var(--ink);
+    position: relative;
+  }
+
+  header::after {
+    content: '';
+    display: block;
+    height: 3px;
+    background: repeating-linear-gradient(90deg, var(--ink) 0 6px, transparent 6px 10px);
+    position: absolute;
+    bottom: -6px; left: 0; right: 0;
+  }
+
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+
+  .subtitle {
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-top: 0.5rem;
+  }
+
+  .header-desc {
+    max-width: 640px;
+    margin: 1rem auto 0;
+    font-size: 0.72rem;
+    line-height: 1.7;
+    opacity: 0.6;
+  }
+
+  .header-desc strong { font-weight: 500; }
+  .header-desc em { font-style: italic; }
+
+  /* ── Layout ── */
+
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 2px 1fr;
+    min-height: calc(100vh - 160px);
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .divider { background: var(--ink); position: relative; }
+
+  .divider::before {
+    content: '≈';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--paper);
+    padding: 0.5rem 0;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.8rem;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .panel { padding: 2.5rem 2rem; }
+
+  .panel-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    font-style: italic;
+    color: var(--gold);
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--paper-dark);
+    letter-spacing: 0.02em;
+  }
+
+  /* ── Shared small-label style ── */
+
+  .label-xs {
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    opacity: 0.4;
+  }
+
+  /* ── Left panel ── */
+
+  .artwork-input { display: flex; flex-direction: column; gap: 1.2rem; }
+
+  .field-row { display: flex; align-items: center; gap: 0.75rem; }
+
+  .field-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    width: 3.5rem;
+    flex-shrink: 0;
+    opacity: 0.6;
+  }
+
+  input[type="number"] {
+    font-family: 'DM Mono', monospace;
+    font-size: 1.2rem;
+    font-weight: 500;
+    width: 100%;
+    border: none;
+    border-bottom: 2px solid var(--paper-dark);
+    background: transparent;
+    color: var(--ink);
+    padding: 0.3rem 0;
+    outline: none;
+    transition: border-color 0.2s;
+    -moz-appearance: textfield;
+  }
+
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+  input[type="number"]:focus { border-bottom-color: var(--accent); }
+
+  .ratio-display {
+    margin-top: 1.5rem;
+    padding: 1rem 1.2rem;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    text-align: center;
+    letter-spacing: 0.05em;
+    min-height: 3.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ratio-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    display: block;
+    opacity: 0.5;
+    margin-bottom: 0.3rem;
+  }
+
+  /* ── Preview ── */
+
+  .artwork-preview {
+    margin-top: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .preview-stage {
+    position: relative;
+    width: 180px;
+    height: 130px;
+  }
+
+  /* Both rects share transition */
+  .preview-rect, .preview-match-rect {
+    position: absolute;
+    transition: all 0.3s ease;
+  }
+
+  .preview-rect {
+    background: transparent;
+    border: 2px solid var(--ink);
+    opacity: 0.35;
+  }
+
+  .preview-match-rect {
+    background: var(--match-light);
+    border: 2px dashed var(--match);
+    opacity: 0;
+  }
+
+  .preview-match-rect.visible { opacity: 1; }
+
+  .preview-stage.perfect .preview-rect   { border-color: var(--perfect); opacity: 0.7; }
+  .preview-stage.perfect .preview-match-rect {
+    background: var(--perfect-light);
+    border: 2px solid var(--perfect);
+    opacity: 1;
+  }
+
+  .perfect-label {
+    font-size: 0.62rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--perfect);
+    opacity: 0;
+    transition: opacity 0.3s;
+    min-height: 1em;
+  }
+
+  .perfect-label.visible { opacity: 1; }
+
+  .preview-legend {
+    display: flex;
+    gap: 1.2rem;
+    font-size: 0.58rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.55;
+  }
+
+  .legend-item { display: flex; align-items: center; gap: 0.35rem; }
+
+  .legend-swatch { width: 14px; height: 10px; flex-shrink: 0; }
+  .legend-swatch.artwork { border: 2px solid var(--ink); }
+  .legend-swatch.canvas  { border: 2px dashed var(--match); background: var(--match-light); }
+
+  .match-orientation-note {
+    font-size: 0.6rem;
+    letter-spacing: 0.06em;
+    color: var(--match);
+    text-align: center;
+    min-height: 1.2em;
+    transition: opacity 0.3s;
+  }
+
+  .match-orientation-note.hidden { opacity: 0; }
+
+  /* ── Match summary ── */
+
+  .match-summary {
+    display: none;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--paper-dark);
+  }
+
+  .match-summary.visible { display: block; }
+
+  .summary-group { margin-bottom: 1.1rem; }
+
+  .summary-group-header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .summary-group-ratio {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    letter-spacing: 0.03em;
+  }
+
+  .summary-group-badge {
+    font-size: 0.52rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 500;
+    padding: 0.1rem 0.35rem;
+    color: white;
+  }
+
+  .summary-group-badge.perfect { background: var(--perfect); }
+  .summary-group-badge.best    { background: var(--match); }
+  .summary-group-badge.near    { background: var(--near); }
+
+  .summary-sizes { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+
+  .summary-size-chip {
+    font-size: 0.65rem;
+    letter-spacing: 0.05em;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid var(--paper-dark);
+    background: var(--paper-mid);
+  }
+
+  /* Group-coloured chips - one rule per state using custom props */
+  .summary-group.is-perfect .summary-size-chip { border-color: var(--perfect); background: var(--perfect-bg); color: var(--perfect); }
+  .summary-group.is-best    .summary-size-chip { border-color: var(--match);   background: var(--match-bg);   color: var(--match); }
+  .summary-group.is-near    .summary-size-chip { border-color: var(--near);    background: var(--near-bg);    color: var(--near); }
+
+  .orientation-note {
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-top: 1rem;
+    opacity: 0.35;
+    text-align: center;
+  }
+
+  /* ── Right panel ── */
+
+  .canvas-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto auto;
+    gap: 0.5rem;
+    padding: 0 0.8rem 0.5rem;
+    border-bottom: 1px solid var(--paper-dark);
+    margin-bottom: 0.5rem;
+  }
+
+  /* canvas-header spans use the shared .label-xs class in HTML */
+
+  .canvas-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+  .ratio-group {
+    border: 1px solid transparent;
+    border-left: 3px solid transparent;
+    transition: border-color 0.25s;
+    position: relative;
+  }
+
+  .ratio-group.is-perfect { border-color: var(--perfect); }
+  .ratio-group.is-best    { border-color: var(--match); }
+  .ratio-group.is-near    { border-left-color: var(--near); }
+
+  .ratio-group-label {
+    display: none;
+    font-size: 0.52rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 500;
+    padding: 0.15rem 0.5rem;
+    color: white;
+    position: absolute;
+    top: -9px; right: 6px;
+    line-height: 1.4;
+  }
+
+  .ratio-group.is-perfect .ratio-group-label { display: block; background: var(--perfect); }
+  .ratio-group.is-best    .ratio-group-label { display: block; background: var(--match); }
+  .ratio-group.is-near    .ratio-group-label { display: block; background: var(--near); }
+
+  .ratio-group-shared-ratio {
+    display: none;
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+    opacity: 0.35;
+    padding: 0.3rem 0.8rem 0;
+  }
+
+  .ratio-group.multi .ratio-group-shared-ratio { display: block; }
+
+  .canvas-item {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto auto;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.5rem 0.8rem;
+    background: var(--paper-mid);
+  }
+
+  .ratio-group.is-perfect .canvas-item { background: var(--perfect-bg); }
+  .ratio-group.is-best    .canvas-item { background: var(--match-bg); }
+  .ratio-group.is-near    .canvas-item { background: var(--near-bg); }
+
+  .canvas-item + .canvas-item { border-top: 1px solid rgba(0,0,0,0.06); }
+
+  .canvas-item input[type="number"] { font-size: 0.95rem; background: transparent; }
+
+  .canvas-item-ratio {
+    font-size: 0.65rem;
+    opacity: 0.4;
+    letter-spacing: 0.05em;
+    text-align: right;
+    white-space: nowrap;
+    line-height: 1.4;
+  }
+
+  .ratio-group.is-perfect .canvas-item-ratio,
+  .ratio-group.is-best    .canvas-item-ratio { opacity: 1; font-weight: 500; }
+  .ratio-group.is-perfect .canvas-item-ratio { color: var(--perfect); }
+  .ratio-group.is-best    .canvas-item-ratio { color: var(--match); }
+
+  .remove-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--ink);
+    opacity: 0.2;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0 0.2rem;
+    transition: opacity 0.15s;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .remove-btn:hover { opacity: 0.6; color: var(--accent); }
+
+  /* add-btn and clear-btn share base chrome */
+  .add-btn, .clear-btn {
+    display: block;
+    width: 100%;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 0.6rem 1rem;
+    transition: all 0.2s;
+    text-align: center;
+    background: none;
+  }
+
+  .add-btn {
+    border: 1px dashed var(--paper-dark);
+    color: var(--ink);
+    opacity: 0.5;
+    margin-bottom: 1rem;
+  }
+
+  .add-btn:hover { opacity: 1; border-color: var(--ink); background: var(--paper-mid); }
+
+  .clear-btn {
+    border: 1px solid var(--paper-dark);
+    color: var(--ink);
+    opacity: 0.35;
+    margin-top: 1rem;
+  }
+
+  .clear-btn:hover { opacity: 1; border-color: var(--accent); color: var(--accent); background: rgba(192,57,43,0.05); }
+  .clear-btn.hidden { display: none; }
+
+  .clear-confirm {
+    display: none;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 1rem;
+    padding: 0.5rem 0.6rem 0.5rem 1rem;
+    background: rgba(192,57,43,0.07);
+    border: 1px solid var(--accent);
+    font-size: 0.65rem;
+    letter-spacing: 0.06em;
+  }
+
+  .clear-confirm.visible { display: flex; }
+  .clear-confirm span { flex: 1; color: var(--accent); }
+
+  .confirm-yes, .confirm-no {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    padding: 0.3rem 0.7rem;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+  }
+
+  .confirm-yes { background: var(--accent); color: white; }
+  .confirm-yes:hover { opacity: 0.85; }
+  .confirm-no  { background: transparent; color: var(--ink); opacity: 0.5; }
+  .confirm-no:hover { opacity: 1; }
+
+  /* ── Toast ── */
+
+  .paste-toast {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(1rem);
+    background: var(--ink);
+    color: var(--paper);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    padding: 0.5rem 1.2rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+    z-index: 100;
+  }
+
+  .paste-toast.show  { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .paste-toast.error { background: var(--accent); }
+
+  footer {
+    text-align: center;
+    padding: 1.5rem;
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    opacity: 0.3;
+    border-top: 1px solid var(--paper-dark);
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  @media (max-width: 640px) {
+    .layout { grid-template-columns: 1fr; }
+    .divider { height: 2px; width: 100%; }
+    .divider::before { top: 0; left: 50%; transform: translate(-50%,-50%); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Canvas Ratio Finder</h1>
+  <p class="subtitle">Match your artwork to the closest standard canvas</p>
+  <p class="header-desc">Enter your artwork's dimensions on the left in any unit: inches, mm, pixels etc. On the right, keep a list of canvas sizes to compare against. Matching sizes are grouped by ratio below the preview. <strong>Paste any size string</strong> (e.g. <em>"210 × 297mm"</em>) anywhere on the page to add it instantly.</p>
+</header>
+
+<div class="layout">
+
+  <div class="panel" id="left-panel">
+    <p class="panel-title">Your Artwork</p>
+
+    <div class="artwork-input">
+      <div class="field-row">
+        <span class="field-label">Width</span>
+        <input type="number" id="art-w" placeholder="e.g. 8.27 (A4)" min="0.01" step="any">
+      </div>
+      <div class="field-row">
+        <span class="field-label">Height</span>
+        <input type="number" id="art-h" placeholder="e.g. 11.69 (A4)" min="0.01" step="any">
+      </div>
+    </div>
+
+    <div class="ratio-display">
+      <div>
+        <span class="ratio-label">aspect ratio</span>
+        <span id="art-ratio-val">—</span>
+      </div>
+    </div>
+
+    <div class="artwork-preview">
+      <div class="preview-stage" id="preview-stage">
+        <div class="preview-match-rect" id="preview-match-rect"></div>
+        <div class="preview-rect" id="preview-rect"></div>
+      </div>
+      <div class="perfect-label" id="perfect-label">✦ Perfect match</div>
+      <div class="match-orientation-note hidden" id="match-orientation-note"></div>
+      <div class="preview-legend">
+        <div class="legend-item"><div class="legend-swatch artwork"></div>Your artwork</div>
+        <div class="legend-item"><div class="legend-swatch canvas"></div>Best canvas</div>
+      </div>
+    </div>
+
+    <div class="match-summary" id="match-summary">
+      <p class="label-xs" style="margin-bottom:0.8rem">Matching sizes</p>
+      <div id="summary-groups"></div>
+    </div>
+
+    <p class="orientation-note">Units are ignored - only proportions matter</p>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="panel" id="right-panel">
+    <p class="panel-title">Standard Canvas Sizes</p>
+
+    <button class="add-btn" id="add-btn">+ Add canvas size</button>
+
+    <div class="canvas-header">
+      <span class="label-xs">Width</span>
+      <span class="label-xs">Height</span>
+      <span class="label-xs" style="grid-column:3/5">Dims / Match</span>
+    </div>
+
+    <div class="canvas-list" id="canvas-list"></div>
+
+    <button class="clear-btn" id="clear-btn">Clear all sizes</button>
+    <div class="clear-confirm" id="clear-confirm">
+      <span>Remove all canvas sizes?</span>
+      <button class="confirm-yes" id="confirm-yes">Yes, clear</button>
+      <button class="confirm-no"  id="confirm-no">Cancel</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="paste-toast" id="paste-toast"></div>
+<footer>Proportions only &mdash; any unit of measurement works</footer>
+
+<script>
+  const DEFAULT_CANVASES = [
+    // Imperial canvas sizes (inches)
+    { w: 8,   h: 10  }, { w: 10,  h: 12  }, { w: 11,  h: 14  },
+    { w: 12,  h: 16  }, { w: 14,  h: 18  }, { w: 16,  h: 20  },
+    { w: 18,  h: 24  }, { w: 20,  h: 24  }, { w: 20,  h: 30  },
+    { w: 24,  h: 30  }, { w: 24,  h: 36  }, { w: 30,  h: 40  },
+    // ISO A-series (mm)
+    { w: 148, h: 210 }, // A5
+    { w: 210, h: 297 }, // A4
+    { w: 297, h: 420 }, // A3
+    { w: 420, h: 594 }, // A2
+    { w: 594, h: 841 }, // A1
+    { w: 841, h: 1189 }, // A0
+  ];
+
+  const PERFECT = 0.001;
+  const NEAR    = 0.15;
+  const GRP_EPS = 0.001;
+  const STAGE_W = 180, STAGE_H = 130;
+
+  let canvases    = DEFAULT_CANVASES.map((c, i) => ({ id: i, ...c }));
+  let nextId      = canvases.length;
+  let focusedInput = null;
+  let toastTimer  = null;
+
+  // DOM refs
+  const $ = id => document.getElementById(id);
+  const artW             = $('art-w');
+  const artH             = $('art-h');
+  const artRatioVal      = $('art-ratio-val');
+  const canvasList       = $('canvas-list');
+  const previewRect      = $('preview-rect');
+  const previewMatchRect = $('preview-match-rect');
+  const previewStage     = $('preview-stage');
+  const orientNote       = $('match-orientation-note');
+  const perfectLabel     = $('perfect-label');
+  const matchSummaryEl   = $('match-summary');
+  const summaryGroupsEl  = $('summary-groups');
+  const pasteToast       = $('paste-toast');
+  const clearBtn         = $('clear-btn');
+  const clearConfirm     = $('clear-confirm');
+
+  // ── Maths ──────────────────────────────────────────────────────────────────
+
+  function gcd(a, b) {
+    a = Math.abs(a); b = Math.abs(b);
+    while (b > 0.0001) { const t = b; b = a % b; a = t; }
+    return a;
+  }
+
+  const getRatio    = (w, h) => (w > 0 && h > 0) ? w / h : null;
+  const canonical   = r => r >= 1 ? r : 1 / r;
+
+  function niceRatio(w, h) {
+    const scale = 1000;
+    const g  = gcd(Math.round(w * scale), Math.round(h * scale));
+    const rw = Math.round(w * scale) / g;
+    const rh = Math.round(h * scale) / g;
+    // Always landscape order (smaller : larger)
+    if (Math.max(rw, rh) <= 100)
+      return `${Math.min(rw, rh)} : ${Math.max(rw, rh)}`;
+    return canonical(w / h).toFixed(3);
+  }
+
+  function fitRect(rw, rh, maxW, maxH) {
+    return rw / rh > maxW / maxH
+      ? { w: maxW,  h: maxW  * (rh / rw) }
+      : { w: maxH  * (rw / rh), h: maxH  };
+  }
+
+  function applyRect(el, w, h) {
+    el.style.cssText += `;width:${w}px;height:${h}px;top:${(STAGE_H-h)/2}px;left:${(STAGE_W-w)/2}px`;
+  }
+
+  // ── Grouping ───────────────────────────────────────────────────────────────
+
+  function buildGroups(artRatio) {
+    const groups = [];
+    canvases.forEach((c, i) => {
+      const r = getRatio(c.w, c.h);
+      if (r === null) { groups.push({ canon: null, indices: [i], diff: null, invalid: true }); return; }
+      const canon = canonical(r);
+      const g = groups.find(x => !x.invalid && Math.abs(x.canon - canon) < GRP_EPS);
+      if (g) g.indices.push(i);
+      else groups.push({ canon, indices: [i], diff: null, invalid: false });
+    });
+    if (artRatio !== null) {
+      const ac = canonical(artRatio);
+      groups.forEach(g => { if (!g.invalid) g.diff = Math.abs(ac - g.canon); });
+      groups.sort((a, b) => {
+        if (a.invalid !== b.invalid) return a.invalid ? 1 : -1;
+        return (a.diff ?? Infinity) - (b.diff ?? Infinity);
+      });
+    }
+    return groups;
+  }
+
+  function bestInGroup(group, artRatio) {
+    let idx = group.indices[0], diff = Infinity, flipped = false;
+    group.indices.forEach(i => {
+      const cr = getRatio(canvases[i].w, canvases[i].h);
+      if (!cr) return;
+      const d1 = Math.abs(artRatio - cr), d2 = Math.abs(artRatio - 1 / cr);
+      const d  = Math.min(d1, d2);
+      if (d < diff) { diff = d; idx = i; flipped = d2 < d1; }
+    });
+    return { idx, flipped };
+  }
+
+  // ── Input helper - avoids duplicating w/h wiring ───────────────────────────
+
+  function makeInput(cId, field, val) {
+    const el = document.createElement('input');
+    el.type = 'number'; el.value = val || ''; el.placeholder = field.toUpperCase();
+    el.min = '0.01'; el.step = 'any';
+    el.addEventListener('focus', () => { focusedInput = el; });
+    el.addEventListener('blur',  () => {
+      focusedInput = null;
+      const v = parseFloat(el.value) || 0;
+      const i = canvases.findIndex(x => x.id === cId);
+      if (i !== -1 && v !== canvases[i][field]) { canvases[i][field] = v; refresh(); }
+    });
+    return el;
+  }
+
+  // ── Toast ──────────────────────────────────────────────────────────────────
+
+  function showToast(msg, err) {
+    clearTimeout(toastTimer);
+    pasteToast.textContent = msg;
+    pasteToast.className = 'paste-toast show' + (err ? ' error' : '');
+    toastTimer = setTimeout(() => pasteToast.classList.remove('show'), 2800);
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+
+  function refresh() {
+    const w = parseFloat(artW.value), h = parseFloat(artH.value);
+    const artRatio = getRatio(w, h);
+    const groups   = buildGroups(artRatio);
+
+    // ── Right panel ──
+    canvasList.innerHTML = '';
+    const bestCanon = artRatio !== null && groups.length ? groups[0].canon : null;
+
+    groups.forEach(g => {
+      let cls = '', lbl = '';
+      if (artRatio !== null && g.diff !== null) {
+        if      (g.diff <= PERFECT)                   { cls = 'is-perfect'; lbl = '✦ Perfect match'; }
+        else if (g.canon === bestCanon)               { cls = 'is-best';    lbl = '✦ Best match'; }
+        else if (g.diff <= NEAR)                      { cls = 'is-near';    lbl = '~ Close'; }
+      }
+
+      const groupEl = document.createElement('div');
+      groupEl.className = 'ratio-group' + (g.indices.length > 1 ? ' multi' : '') + (cls ? ' ' + cls : '');
+
+      const labelEl = document.createElement('span');
+      labelEl.className = 'ratio-group-label';
+      labelEl.textContent = lbl;
+      groupEl.appendChild(labelEl);
+
+      if (g.indices.length > 1) {
+        const rep = canvases[g.indices[0]];
+        const sr  = document.createElement('div');
+        sr.className = 'ratio-group-shared-ratio';
+        sr.textContent = 'Shared ratio: ' + niceRatio(rep.w, rep.h);
+        groupEl.appendChild(sr);
+      }
+
+      g.indices.forEach(i => {
+        const c  = canvases[i];
+        const cr = getRatio(c.w, c.h);
+
+        const item = document.createElement('div');
+        item.className = 'canvas-item';
+
+        const ratioSpan = document.createElement('span');
+        ratioSpan.className = 'canvas-item-ratio';
+        if (cr !== null && artRatio !== null && cls) {
+          const d1 = Math.abs(artRatio - cr), d2 = Math.abs(artRatio - 1 / cr);
+          const fl = d2 < d1;
+          const dw = fl ? c.h : c.w, dh = fl ? c.w : c.h;
+          ratioSpan.innerHTML = `${dw}×${dh}<br><span style="opacity:.5">(${fl ? c.w+'×'+c.h : c.h+'×'+c.w})</span>`;
+        } else {
+          ratioSpan.textContent = cr !== null ? `${c.w}×${c.h}` : '—';
+        }
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-btn';
+        removeBtn.textContent = '×';
+        removeBtn.addEventListener('click', () => {
+          const idx = canvases.findIndex(x => x.id === c.id);
+          if (idx !== -1) { canvases.splice(idx, 1); refresh(); }
+        });
+
+        item.append(makeInput(c.id, 'w', c.w), makeInput(c.id, 'h', c.h), ratioSpan, removeBtn);
+        groupEl.appendChild(item);
+      });
+
+      canvasList.appendChild(groupEl);
+    });
+
+    // ── Left panel: preview + summary ──
+    if (artRatio === null) {
+      artRatioVal.textContent = '—';
+      previewRect.style.opacity = '0.15';
+      previewMatchRect.classList.remove('visible');
+      previewStage.classList.remove('perfect');
+      perfectLabel.classList.remove('visible');
+      orientNote.classList.add('hidden');
+      matchSummaryEl.classList.remove('visible');
+      return;
+    }
+
+    artRatioVal.textContent = niceRatio(w, h);
+    const ad = fitRect(w, h, STAGE_W - 20, STAGE_H - 20);
+    applyRect(previewRect, ad.w, ad.h);
+    previewRect.style.opacity = '0.5';
+
+    const validGroups = groups.filter(g => !g.invalid);
+    if (!validGroups.length) {
+      previewMatchRect.classList.remove('visible');
+      orientNote.classList.add('hidden');
+      matchSummaryEl.classList.remove('visible');
+      return;
+    }
+
+    const best = validGroups[0];
+    const { idx, flipped } = bestInGroup(best, artRatio);
+    const bc = canvases[idx];
+    const cw = flipped ? bc.h : bc.w, ch = flipped ? bc.w : bc.h;
+    const md = fitRect(cw, ch, STAGE_W - 20, STAGE_H - 20);
+    applyRect(previewMatchRect, md.w, md.h);
+    previewMatchRect.classList.add('visible');
+
+    const isPerfect = best.diff <= PERFECT;
+    previewStage.classList.toggle('perfect', isPerfect);
+    perfectLabel.classList.toggle('visible', isPerfect);
+
+    if (isPerfect) {
+      orientNote.classList.add('hidden');
+    } else {
+      orientNote.innerHTML = flipped
+        ? `rotated — ${bc.h}×${bc.w} <span style="opacity:.5">(as input: ${bc.w}×${bc.h})</span>`
+        : `as input — ${bc.w}×${bc.h} <span style="opacity:.5">(rotated: ${bc.h}×${bc.w})</span>`;
+      orientNote.classList.remove('hidden');
+    }
+
+    // Summary
+    const relevant = validGroups.filter(g => g.diff <= NEAR);
+    summaryGroupsEl.innerHTML = '';
+    matchSummaryEl.classList.toggle('visible', relevant.length > 0);
+
+    relevant.forEach((g, gi) => {
+      const rep = canvases[g.indices[0]];
+      const isPG = g.diff <= PERFECT, isBG = !isPG && gi === 0;
+      const state = isPG ? 'perfect' : isBG ? 'best' : 'near';
+
+      const groupDiv = document.createElement('div');
+      groupDiv.className = `summary-group is-${state}`;
+
+      const header = document.createElement('div');
+      header.className = 'summary-group-header';
+
+      const ratioEl = document.createElement('span');
+      ratioEl.className = 'summary-group-ratio';
+      ratioEl.textContent = niceRatio(rep.w, rep.h);
+
+      const badge = document.createElement('span');
+      badge.className = `summary-group-badge ${state}`;
+      badge.textContent = isPG ? '✦ Perfect match' : isBG ? '✦ Best match' : '~ Close';
+      header.append(ratioEl, badge);
+
+      const sizesEl = document.createElement('div');
+      sizesEl.className = 'summary-sizes';
+
+      g.indices.forEach(i => {
+        const c  = canvases[i];
+        const cr = getRatio(c.w, c.h);
+        if (!cr) return;
+        const d1 = Math.abs(artRatio - cr), d2 = Math.abs(artRatio - 1 / cr);
+        const fl = d2 < d1;
+        const dw = fl ? c.h : c.w, dh = fl ? c.w : c.h;
+        const chip = document.createElement('span');
+        chip.className = 'summary-size-chip';
+        chip.textContent = fl ? `${dw}×${dh} ↺` : `${dw}×${dh}`;
+        chip.title = fl
+          ? `Stored as ${c.w}×${c.h} - rotated to match orientation`
+          : 'Orientation matches your artwork';
+        sizesEl.appendChild(chip);
+      });
+
+      groupDiv.append(header, sizesEl);
+      summaryGroupsEl.appendChild(groupDiv);
+    });
+  }
+
+  // ── Artwork inputs ─────────────────────────────────────────────────────────
+
+  [artW, artH].forEach(el => {
+    el.addEventListener('focus', () => { focusedInput = el; });
+    el.addEventListener('blur',  () => { focusedInput = null; refresh(); });
+    el.addEventListener('input', () => {
+      // Live preview only - skip full re-render while typing
+      const w = parseFloat(artW.value), h = parseFloat(artH.value);
+      const r = getRatio(w, h);
+      if (r) {
+        artRatioVal.textContent = niceRatio(w, h);
+        const d = fitRect(w, h, STAGE_W - 20, STAGE_H - 20);
+        applyRect(previewRect, d.w, d.h);
+        previewRect.style.opacity = '0.5';
+      } else {
+        artRatioVal.textContent = '—';
+        previewRect.style.opacity = '0.15';
+      }
+    });
+  });
+
+  // ── Add button ─────────────────────────────────────────────────────────────
+
+  $('add-btn').addEventListener('click', () => {
+    canvases.push({ id: nextId++, w: 0, h: 0 });
+    refresh();
+    const all = canvasList.querySelectorAll('.canvas-item');
+    if (all.length) {
+      const last = all[all.length - 1];
+      last.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      last.querySelector('input').focus();
+    }
+  });
+
+  // ── Clear confirm ──────────────────────────────────────────────────────────
+
+  function dismissClear() {
+    clearBtn.classList.remove('hidden');
+    clearConfirm.classList.remove('visible');
+    document.removeEventListener('click', dismissClear);
+  }
+
+  clearBtn.addEventListener('click', () => {
+    if (!canvases.length) return;
+    clearBtn.classList.add('hidden');
+    clearConfirm.classList.add('visible');
+    setTimeout(() => document.addEventListener('click', dismissClear), 0);
+  });
+
+  $('confirm-yes').addEventListener('click', e => {
+    e.stopPropagation();
+    canvases.splice(0, canvases.length);
+    dismissClear();
+    refresh();
+  });
+
+  $('confirm-no').addEventListener('click', e => {
+    e.stopPropagation();
+    dismissClear();
+  });
+
+  // ── Paste parser ───────────────────────────────────────────────────────────
+
+  document.addEventListener('paste', e => {
+    if (focusedInput) return;
+    const text = (e.clipboardData || window.clipboardData).getData('text')?.trim();
+    if (!text) return;
+    const nums = [...text.matchAll(/\d+[.,]?\d*/g)]
+      .map(m => parseFloat(m[0].replace(',', '.')))
+      .filter(n => n > 0);
+    if (nums.length >= 2) {
+      canvases.push({ id: nextId++, w: nums[0], h: nums[1] });
+      refresh();
+      const all = canvasList.querySelectorAll('.canvas-item');
+      if (all.length) all[all.length - 1].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      showToast(`Added ${nums[0]} × ${nums[1]}`, false);
+      e.preventDefault();
+    } else {
+      showToast(`Couldn't find two numbers, please enter manually`, true);
+    }
+  });
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  refresh();
+</script>
+</body>
+</html>
